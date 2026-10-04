@@ -1,0 +1,84 @@
+{
+  "projects": [
+    {
+      "name": "Contributor Hub",
+      "owner": "Maya Chen",
+      "status": "In progress",
+      "recentActivity": "Reviewing the new onboarding flow with the contributor group.",
+      "priority": "High",
+      "health": "on-track",
+      "progress": {
+        "completed": 6,
+        "total": 10
+      },
+      "milestones": [
+        {
+          "name": "Onboarding pilot",
+          "date": "2026-10-21",
+          "status": "in-progress"
+        },
+        {
+          "name": "Public launch",
+          "date": "2026-11-12",
+          "status": "upcoming"
+        }
+      ]
+    },
+    {
+      "name": "Insights Refresh",
+      "owner": "Jordan Lee",
+      "status": "In progress",
+      "recentActivity": "The analytics review surfaced a few metrics to clarify before sign-off.",
+      "priority": "Medium",
+      "health": "at-risk",
+      "progress": {
+        "completed": 4,
+        "total": 8
+      },
+      "milestones": [
+        {
+          "name": "Metric definitions approved",
+          "date": "2026-10-16",
+          "status": "at-risk"
+        },
+        {
+          "name": "Dashboard handoff",
+          "date": "2026-11-02",
+          "status": "upcoming"
+        }
+      ]
+    },
+    {
+      "name": "Platform Foundations",
+      "owner": "Alex Rivera",
+      "status": "Planning",
+      "recentActivity": "The team aligned on the service boundaries and first delivery slice.",
+      "priority": "High",
+      "health": "on-track",
+      "progress": {
+        "completed": 2,
+        "total": 7
+      },
+      "milestones": [
+        {
+          "name": "Technical proposal",
+          "date": "2026-10-24",
+          "status": "upcoming"
+        }
+      ]
+    },
+    {
+      "name": "Docs That Work",
+      "owner": "Sam Patel",
+      "status": "Review",
+      "recentActivity": "The first guide set is ready for a final contributor review.",
+      "priority": "Low",
+      "health": "off-track",
+      "progress": {
+        "completed": 7,
+        "total": 9
+      },
+      "milestones": []
+    }
+  ]
+}

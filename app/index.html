@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f5f7fb">
+    <meta name="description" content="A clear, contributor-friendly view of project health, progress, and milestones.">
+    <title>Project Pulse</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="dashboard">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">TEAM OVERVIEW</p>
+          <h1>Project Pulse</h1>
+          <p class="page-intro">A shared view of what&apos;s moving, who&apos;s driving it, and what&apos;s next.</p>
+        </div>
+        <div class="header-mark" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+      </header>
+
+      <section class="summary-grid" aria-label="Portfolio summary" id="summary">
+        <article class="summary-card">
+          <span class="summary-icon summary-icon--blue" aria-hidden="true">↗</span>
+          <div><p class="summary-label">Projects</p><p class="summary-value" id="project-count">—</p></div>
+        </article>
+        <article class="summary-card">
+          <span class="summary-icon summary-icon--amber" aria-hidden="true">!</span>
+          <div><p class="summary-label">Need attention</p><p class="summary-value" id="attention-count">—</p></div>
+        </article>
+        <article class="summary-card">
+          <span class="summary-icon summary-icon--violet" aria-hidden="true">◎</span>
+          <div><p class="summary-label">Upcoming milestones</p><p class="summary-value" id="milestone-count">—</p></div>
+        </article>
+      </section>
+
+      <section class="projects-section" aria-labelledby="projects-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">THE WORK</p>
+            <h2 id="projects-heading">Projects at a glance</h2>
+          </div>
+          <p class="section-note">Health, progress, and next steps</p>
+        </div>
+        <p class="load-state" id="load-state" role="status" aria-live="polite">Loading project updates…</p>
+        <div class="project-grid" id="project-list" aria-busy="true"></div>
+      </section>
+    </main>
+    <script>
+      const HEALTH_LABELS = {
+        "on-track": "On track",
+        "at-risk": "At risk",
+        "off-track": "Off track",
+      };
+      const MILESTONE_LABELS = {
+        upcoming: "Upcoming",
+        "in-progress": "In progress",
+        complete: "Complete",
+        "at-risk": "At risk",
+      };
+      const projectList = document.querySelector("#project-list");
+      const loadState = document.querySelector("#load-state");
+
+      function requireText(value, field) {
+        if (typeof value !== "string" || value.trim() === "") {
+          throw new Error(`Each project must have a non-empty ${field}.`);
+        }
+        return value.trim();
+      }
+
+      function validateProjects(data) {
+        if (!data || !Array.isArray(data.projects)) {
+          throw new Error("Project data must contain a projects array.");
+        }
+
+        return data.projects.map((project, index) => {
+          const label = `Project ${index + 1}`;
+          const health = requireText(project.health, `${label} health`);
+          if (!Object.hasOwn(HEALTH_LABELS, health)) {
+            throw new Error(`${label} has an unsupported health value.`);
+          }
+
+          const completed = project.progress?.completed;
+          const total = project.progress?.total;
+          if (
+            !Number.isInteger(completed) ||
+            !Number.isInteger(total) ||
+            total <= 0 ||
+            completed < 0 ||
+            completed > total
+          ) {
+            throw new Error(`${label} must have valid completed and total progress values.`);
+          }
+
+          if (!Array.isArray(project.milestones)) {
+            throw new Error(`${label} milestones must be an array.`);
+          }
+          const milestones = project.milestones.map((milestone) => {
+            const name = requireText(milestone.name, `${label} milestone name`);
+            const date = requireText(milestone.date, `${label} milestone date`);
+            const parsedDate = new Date(`${date}T00:00:00Z`);
+            if (
+              !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+              Number.isNaN(parsedDate.getTime()) ||
+              parsedDate.toISOString().slice(0, 10) !== date
+            ) {
+              throw new Error(`${label} has a milestone with an invalid date.`);
+            }
+            if (!Object.hasOwn(MILESTONE_LABELS, milestone.status)) {
+              throw new Error(`${label} has a milestone with an unsupported status.`);
+            }
+            return { name, date, status: milestone.status };
+          });
+
+          return {
+            name: requireText(project.name, `${label} name`),
+            owner: requireText(project.owner, `${label} owner`),
+            status: requireText(project.status, `${label} status`),
+            recentActivity: requireText(project.recentActivity, `${label} recent activity`),
+            priority: requireText(project.priority, `${label} priority`),
+            health,
+            progress: { completed, total },
+            milestones,
+          };
+        });
+      }
+
+      function createTextElement(tagName, className, text) {
+        const element = document.createElement(tagName);
+        element.className = className;
+        element.textContent = text;
+        return element;
+      }
+
+      function createDetail(label, value) {
+        const detail = document.createElement("div");
+        detail.className = "detail";
+        detail.append(
+          createTextElement("dt", "detail-label", label),
+          createTextElement("dd", "detail-value", value),
+        );
+        return detail;
+      }
+
+      function createProjectCard(project) {
+        const card = document.createElement("article");
+        card.className = "project-card";
+        card.dataset.health = project.health;
+
+        const header = document.createElement("div");
+        header.className = "card-header";
+        const headingGroup = document.createElement("div");
+        headingGroup.className = "card-heading-group";
+        headingGroup.append(
+          createTextElement("h3", "project-name", project.name),
+          createTextElement("p", "project-status", project.status),
+        );
+        const health = document.createElement("span");
+        health.className = `health-badge health-badge--${project.health}`;
+        const healthDot = document.createElement("span");
+        healthDot.setAttribute("aria-hidden", "true");
+        health.append(healthDot, document.createTextNode(HEALTH_LABELS[project.health]));
+        header.append(headingGroup, health);
+
+        const details = document.createElement("dl");
+        details.className = "project-details";
+        details.append(createDetail("Owner", project.owner), createDetail("Priority", project.priority));
+
+        const progressSection = document.createElement("section");
+        progressSection.className = "progress-section";
+        const progressHeading = document.createElement("div");
+        progressHeading.className = "progress-heading";
+        progressHeading.append(
+          createTextElement("span", "detail-label", "Overall progress"),
+          createTextElement("span", "progress-value", `${project.progress.completed} of ${project.progress.total} · ${Math.round((project.progress.completed / project.progress.total) * 100)}%`),
+        );
+        const progress = document.createElement("progress");
+        progress.className = "progress-bar";
+        progress.max = project.progress.total;
+        progress.value = project.progress.completed;
+        progress.setAttribute("aria-label", `${project.name} overall progress`);
+        progressSection.append(progressHeading, progress);
+
+        const activity = document.createElement("section");
+        activity.className = "activity-section";
+        activity.append(
+          createTextElement("h4", "detail-label", "Recent activity"),
+          createTextElement("p", "activity-text", project.recentActivity),
+        );
+
+        const milestone = project.milestones
+          .filter((item) => item.status !== "complete")
+          .sort((left, right) => left.date.localeCompare(right.date))[0];
+        const milestoneSection = document.createElement("section");
+        milestoneSection.className = "milestone-section";
+        milestoneSection.append(createTextElement("h4", "detail-label", "Next milestone"));
+        if (milestone) {
+          const milestoneRow = document.createElement("div");
+          milestoneRow.className = "milestone-row";
+          const milestoneInfo = document.createElement("div");
+          milestoneInfo.className = "milestone-info";
+          const time = createTextElement(
+            "time",
+            "milestone-date",
+            new Date(`${milestone.date}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }),
+          );
+          time.dateTime = milestone.date;
+          milestoneInfo.append(
+            createTextElement("p", "milestone-name", milestone.name),
+            time,
+          );
+          const milestoneStatus = createTextElement(
+            "span",
+            `milestone-status milestone-status--${milestone.status}`,
+            MILESTONE_LABELS[milestone.status],
+          );
+          milestoneRow.append(milestoneInfo, milestoneStatus);
+          milestoneSection.append(milestoneRow);
+        } else {
+          milestoneSection.append(createTextElement("p", "empty-milestone", "No upcoming milestone"));
+        }
+
+        card.append(header, details, progressSection, activity, milestoneSection);
+        return card;
+      }
+
+      function renderProjects(projects) {
+        const fragment = document.createDocumentFragment();
+        for (const project of projects) {
+          fragment.append(createProjectCard(project));
+        }
+        projectList.replaceChildren(fragment);
+        projectList.setAttribute("aria-busy", "false");
+        document.querySelector("#project-count").textContent = String(projects.length);
+        document.querySelector("#attention-count").textContent = String(
+          projects.filter((project) => project.health !== "on-track").length,
+        );
+        const upcomingCount = projects.reduce(
+          (count, project) => count + project.milestones.filter((item) => item.status !== "complete").length,
+          0,
+        );
+        document.querySelector("#milestone-count").textContent = String(upcomingCount);
+        loadState.hidden = true;
+      }
+
+      async function loadProjects() {
+        try {
+          const response = await fetch("project-data.json");
+          if (!response.ok) {
+            throw new Error(`Project data request failed (${response.status}).`);
+          }
+          renderProjects(validateProjects(await response.json()));
+        } catch (error) {
+          projectList.setAttribute("aria-busy", "false");
+          loadState.className = "load-state load-state--error";
+          loadState.textContent = `Project updates couldn't be loaded. ${error.message}`;
+        }
+      }
+
+      loadProjects();
+    </script>
+  </body>
+</html>
