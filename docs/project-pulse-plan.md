@@ -116,3 +116,4 @@ no framework, build step, or third-party runtime dependency is required.
 
 - None block implementation. Use representative project names and a cohesive
   visual theme unless Mona provides preferred examples or branding.
+
